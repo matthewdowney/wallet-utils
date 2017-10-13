@@ -132,5 +132,6 @@ def hash160_bytes(byte_input):
 def compressed_pk(pk_bytes):
     """
     Compressed public keys are 32 bytes of the pk prefixed with a parity byte.
+    :return True for valid compressed format.
     """
     return len(pk_bytes) == 33 and (pk_bytes.startswith(b"\x02") or pk_bytes.startswith(b"\x03"))
