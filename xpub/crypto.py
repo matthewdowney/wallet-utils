@@ -1,6 +1,7 @@
 import hashlib
 from functools import reduce
 from hashlib import sha256
+from xpub.btc_script import *
 
 try:
     from bip32utils import BIP32Key, Base58
@@ -31,6 +32,10 @@ ADDR_PREFIX_BYTES = {
     'p2sh': b"\x05",
     'p2sh_test': b"\xc4"
 }
+
+
+def _prefix_bytes(addr_type, testnet=False):
+    return ADDR_PREFIX_BYTES[addr_type + ('_test' if testnet else '')]
 
 
 def xpub_to_child_xpub(xpub, idx):
@@ -89,7 +94,7 @@ def pk_to_p2pkh_addr(pk, testnet=False):
     """
     pk_bytes = bytes.fromhex(pk)
     assert is_compressed_pk(pk_bytes), "Only use compressed public keys please."
-    prefix = ADDR_PREFIX_BYTES['p2pkh' + ('_test' if testnet else '')]
+    prefix = _prefix_bytes('p2pkh', testnet=testnet)
     return Base58.check_encode(prefix + hash160_bytes(pk_bytes))
 
 
@@ -98,7 +103,7 @@ def pk_to_ethereum_addr(uncompressed_pk):
     Uncompressed public key (hex string) -> Ethereum address.
     """
     pk_bytes = bytes.fromhex(uncompressed_pk)
-    assert len(pk_bytes) == 65 and pk_bytes.startswith(b"\x04"), \
+    assert is_uncompressed_pk(pk_bytes), \
         'Only uncompressed public keys can be used to generate ethereum addresses. (And I don\'t want to implement ' \
         'the decompression.) '
     pk_bytes = pk_bytes[1:]  # Strip the initial 0x04 byte
@@ -120,9 +125,25 @@ def pk_to_p2wpkh_in_p2sh_addr(pk, testnet=False):
     script_sig = push_20 + hash160_bytes(pk_bytes)
 
     # Address is then prefix + hash160(script_sig)
-    prefix = ADDR_PREFIX_BYTES['p2sh' + ('_test' if testnet else '')]
+    prefix = _prefix_bytes('p2sh', testnet=testnet)
     address = Base58.check_encode(prefix + hash160_bytes(script_sig))
     return address
+
+
+def pks_to_p2sh_multisig_addr(m, *pks):
+    """
+    :param m: The 'm' in m-of-n; the number of required signatures.
+    :param pks: The public keys involved in the multisig. `len(pks) == n` in m-of-n.
+    :return: A base 58 encoded address. (The p2sh address prefix + the hash of the redeem script.)
+    """
+    assert len(pks) <= 20, "keys passed to OP_CHECKMULTISIG <= 20"
+    pks = sorted(pks)
+    push_pks = reduce(lambda a, b: a + push_bytes(b), map(bytes.fromhex, pks), b'')
+    n = op_n(len(pks))  # The 'n' part of m-of-n
+    # Format is <OP_{M required}> <A pubkey> ... <N pubkey> <OP_{N keys}> <OP_CHECKMULTISIG>
+    redeem_script = op_n(m) + push_pks + n + OP_CHECKMULTISIG
+    assert len(redeem_script) <= 500, "Spending script is at most 500 bytes (it is valid /and/ standard)"
+    return Base58.check_encode(_prefix_bytes("p2sh") + hash160_bytes(redeem_script))
 
 
 def compress_pk(uncompressed_pk):
@@ -131,9 +152,8 @@ def compress_pk(uncompressed_pk):
     flag & x, y are the x, y elliptic curve coordinates. Compressed key is (02 + y's parity, x).
     """
     pk_bytes = bytes.fromhex(uncompressed_pk)
-    assert len(pk_bytes) == 65 and pk_bytes.startswith(b"\x04"), \
-        "Uncompressed public keys are 65 bytes long and prefixed by '04'"
-    pk_bytes = pk_bytes[1:]  # Remove the prefix
+    assert is_uncompressed_pk(pk_bytes), "Provided key is uncompressed."
+    pk_bytes = pk_bytes[1:]  # Remove the x04 prefix
     x, y = pk_bytes[:32], pk_bytes[32:]  # Split out the x, y ec points
     parity_flag = (b'\x03' if int(y.hex(), 16) & 1 else b'\x02')
     return (parity_flag + x).hex()
@@ -152,3 +172,12 @@ def is_compressed_pk(pk_bytes):
     :return True for valid compressed format.
     """
     return len(pk_bytes) == 33 and (pk_bytes.startswith(b"\x02") or pk_bytes.startswith(b"\x03"))
+
+
+def is_uncompressed_pk(pk_bytes):
+    """
+    Uncompressed public keys are 65 bytes long and prefixed by '04'.
+    :return True for valid uncompressed format.
+    """
+    return len(pk_bytes) == 65 and pk_bytes.startswith(b"\x04")
+
