@@ -67,6 +67,13 @@ class TestCryptoMethods(unittest.TestCase):
         address = "0bed7abd61247635c1973eb38474a2516ed1d884"
         self.assertEqual(pk_to_ethereum_addr(pub_key), address)
 
+    def test_compress_pk(self):
+        """
+        Use bip49's test vector, which incidentally mentions these values.
+        """
+        unc_pk = "04a1af804ac108a8a51782198c2d034b28bf90c8803f5a53f76276fa69a4eae77f3010ba699877871e188285d8c36e320eb08311d8aecf27ff8971bc7fde240bfd"
+        self.assertEqual(compress_pk(unc_pk), "03a1af804ac108a8a51782198c2d034b28bf90c8803f5a53f76276fa69a4eae77f")
+
     @staticmethod
     def bip49_xpub():
         """

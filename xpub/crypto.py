@@ -12,10 +12,12 @@ try:
     # noinspection PyPackageRequirements
     import sha3
 
-    def keccak_256(): return sha3.keccak_256()
+
+    def keccak_256():
+        return sha3.keccak_256()
 except Exception:
     raise ImportError("Need the pysha3 to use Ethereum's special keccak variation (which doesn't conform to the "
-                      "eventual sha3 standard: $ pip install pysha3")
+                      "eventual sha3 standard): $ pip install pysha3")
 
 # BIP32 Keys are specified as hardened (derived using the private key) if their index is >= 2**31. These utils are for
 # xpubs only--no private keys--so all indexes must be < MAX_IDX
@@ -86,7 +88,7 @@ def pk_to_p2pkh_addr(pk, testnet=False):
     Compressed public key (hex string) -> p2pkh address. 'Legacy Bitcoin address.'
     """
     pk_bytes = bytes.fromhex(pk)
-    assert compressed_pk(pk_bytes), "Only use compressed public keys please."
+    assert is_compressed_pk(pk_bytes), "Only use compressed public keys please."
     prefix = ADDR_PREFIX_BYTES['p2pkh' + ('_test' if testnet else '')]
     return Base58.check_encode(prefix + hash160_bytes(pk_bytes))
 
@@ -110,7 +112,8 @@ def pk_to_p2wpkh_in_p2sh_addr(pk, testnet=False):
     Compressed public key (hex string) -> p2wpkh nested in p2sh address. 'SegWit address.'
     """
     pk_bytes = bytes.fromhex(pk)
-    assert compressed_pk(pk_bytes), "Only compressed public keys are compatible with p2sh-p2wpkh addresses. See BIP49."
+    assert is_compressed_pk(pk_bytes), \
+        "Only compressed public keys are compatible with p2sh-p2wpkh addresses. See BIP49."
 
     # Script sig is just PUSH(20){hash160(cpk)}
     push_20 = bytes.fromhex("0014")
@@ -122,6 +125,20 @@ def pk_to_p2wpkh_in_p2sh_addr(pk, testnet=False):
     return address
 
 
+def compress_pk(uncompressed_pk):
+    """
+    Uncompressed public key (hex string) -> compressed public key (hex string). Public key is (04, x, y) where 04 is a
+    flag & x, y are the x, y elliptic curve coordinates. Compressed key is (02 + y's parity, x).
+    """
+    pk_bytes = bytes.fromhex(uncompressed_pk)
+    assert len(pk_bytes) == 65 and pk_bytes.startswith(b"\x04"), \
+        "Uncompressed public keys are 65 bytes long and prefixed by '04'"
+    pk_bytes = pk_bytes[1:]  # Remove the prefix
+    x, y = pk_bytes[:32], pk_bytes[32:]  # Split out the x, y ec points
+    parity_flag = (b'\x03' if int(y.hex(), 16) & 1 else b'\x02')
+    return (parity_flag + x).hex()
+
+
 def hash160_bytes(byte_input):
     """
     Type is bytes -> bytes.
@@ -129,7 +146,7 @@ def hash160_bytes(byte_input):
     return hashlib.new('ripemd160', sha256(byte_input).digest()).digest()
 
 
-def compressed_pk(pk_bytes):
+def is_compressed_pk(pk_bytes):
     """
     Compressed public keys are 32 bytes of the pk prefixed with a parity byte.
     :return True for valid compressed format.
