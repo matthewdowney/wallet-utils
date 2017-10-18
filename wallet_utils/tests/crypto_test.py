@@ -1,6 +1,6 @@
 import unittest
 
-from xpub.crypto import *
+from wallet_utils.crypto import *
 
 
 class TestCryptoMethods(unittest.TestCase):
@@ -10,7 +10,7 @@ class TestCryptoMethods(unittest.TestCase):
 
     def test_xpub_to_child_xpub(self):
         """
-        BIP32 test case for getting the child derivation of an xpub.
+        BIP32 test case for getting the child derivation of an wallet_utils.
         """
         root = "xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeNK1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw"
         child1 = "xpub6ASuArnXKPbfEwhqN6e3mwBcDTgzisQN1wXN9BJcM47sSikHjJf3UFHKkNAWbWMiGj7Wf5uMash7SyYq527Hqck2AxYysAA7xmALppuCkwQ"
@@ -37,7 +37,7 @@ class TestCryptoMethods(unittest.TestCase):
 
     def test_xpub_to_uncompressed(self):
         """
-        xpub is for the compressed public key 03a1af804ac108a8a51782198c2d034b28bf90c8803f5a53f76276fa69a4eae77f.
+        wallet_utils is for the compressed public key 03a1af804ac108a8a51782198c2d034b28bf90c8803f5a53f76276fa69a4eae77f.
         """
         xpub = self.bip49_xpub()
         recv0 = xpub_at_path(xpub, 0, 0)  # first receive address
@@ -92,7 +92,7 @@ class TestCryptoMethods(unittest.TestCase):
     @staticmethod
     def bip49_xpub():
         """
-        BIP49's test vector only gives an xpriv, so use the excellent bip32utils library to return that xpriv -> xpub.
+        BIP49's test vector only gives an xpriv, so use the excellent bip32utils library to return that xpriv -> wallet_utils.
         """
         xpriv = "tprv8gRrNu65W2Msef2BdBSUgFdRTGzC8EwVXnV7UGS3faeXtuMVtGfEdidVeGbThs4ELEoayCAzZQ4uUji9DUiAs7erdVskqju7hrBcDvDsdbY"
         return BIP32Key.fromExtendedKey(xpriv, public=False).ExtendedKey(private=False)

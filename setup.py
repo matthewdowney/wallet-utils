@@ -1,15 +1,14 @@
 from distutils.core import setup
 
 setup(
-    name='xpub-utils',
+    name='wallet-utils',
     version='0.0.0',
-    packages=['xpub'],
+    packages=['wallet_utils'],
     url='',
     license='MIT',
     author='Matthew Downey',
     author_email='matthewdowney20@gmail.com',
-    description='Utilities for dealing with extended public keys (xpubs) in HD crypto wallets. '
-                'Wraps the excellent bip32utils library, which does the ECDSA & key derivation heavy lifting, to '
-                'provide a function wrappers & support different address types.',
+    description='Utilities for dealing with crypto wallets (support for HD wallets). Makes use of the excellent '
+                'bip32utils library, which does the EC crypto key derivation heavy lifting.',
     requires=['bip32utils', 'pysha3']
 )

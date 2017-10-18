@@ -1,6 +1,6 @@
 import unittest
 
-from xpub.btc_script import *
+from wallet_utils.btc_script import *
 
 
 class TestBtcScriptFunctions(unittest.TestCase):

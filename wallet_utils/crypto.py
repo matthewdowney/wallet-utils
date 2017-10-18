@@ -1,7 +1,7 @@
 import hashlib
 from functools import reduce
 from hashlib import sha256
-from xpub.btc_script import *
+from wallet_utils.btc_script import *
 
 try:
     from bip32utils import BIP32Key, Base58
@@ -40,45 +40,45 @@ def _prefix_bytes(addr_type, testnet=False):
 
 def xpub_to_child_xpub(xpub, idx):
     """
-    Get the child xpub for a given xpub and index. E.g. if `xp` is the xpub for m/44'/0'/0', then
-    `xpub_to_child_xpub(xp, i)` will give the xpub corresponding to m/44'/0'/0'/i.
-    :param xpub: Base58 encoded xpub.
+    Get the child wallet_utils for a given wallet_utils and index. E.g. if `xp` is the wallet_utils for m/44'/0'/0', then
+    `xpub_to_child_xpub(xp, i)` will give the wallet_utils corresponding to m/44'/0'/0'/i.
+    :param xpub: Base58 encoded wallet_utils.
     :param idx: Integer, non-hardened index (idx < 2**31).
-    :return: Base58 encoded xpub.
+    :return: Base58 encoded wallet_utils.
     """
     assert 0 <= idx < MAX_IDX, \
         "Indexes must be >= 0 and < 2^31 (indexes >= 2^31 must be derived as hardened, which is not possible with an " \
-        "xpub). "
+        "wallet_utils). "
     return BIP32Key.fromExtendedKey(xpub).CKDpub(idx).ExtendedKey(private=False)
 
 
 def xpub_at_path(root_node, *path):
     """
-    Follow a (non-hardened) hierarchy from a root node. E.g. if `rn` is the xpub for account #1 (m/44'/0'/1'), the first
+    Follow a (non-hardened) hierarchy from a root node. E.g. if `rn` is the wallet_utils for account #1 (m/44'/0'/1'), the first
     receiving address (m/44'/0'/1'/0/1) and change address (m/44'/0'/1'/1/1) are `xpub_at_path(rn, 0, 1)` and
     `xpub_at_path(rn, 1, 1)`, respectively.
-    :param root_node: Base58 encoded xpub.
+    :param root_node: Base58 encoded wallet_utils.
     :param path: The path to append to the current node as an integer list, e.g. to append the path /0/1/2 use 0, 1, 2.
-    :return: Base58 encoded xpub.
+    :return: Base58 encoded wallet_utils.
     """
     return reduce(xpub_to_child_xpub, path, root_node)
 
 
 def xpub_to_pk(xpub):
     """
-    Derive a compressed public key from an xpub.
-    :param xpub: Base58 encoded xpub.
+    Derive a compressed public key from an wallet_utils.
+    :param xpub: Base58 encoded wallet_utils.
     :return: Hex string compressed public key.
     """
-    # Last 33 bytes of xpub are the compressed public key
+    # Last 33 bytes of wallet_utils are the compressed public key
     raw = Base58.check_decode(xpub)
     return raw[-33:].hex()
 
 
 def xpub_to_uncompressed_pk(xpub):
     """
-    Derive an uncompressed public key from an xpub. Let the excellent bip32utils library create the point from the xpub.
-    :param xpub: Base58 encoded xpub.
+    Derive an uncompressed public key from an wallet_utils. Let the excellent bip32utils library create the point from the wallet_utils.
+    :param xpub: Base58 encoded wallet_utils.
     :return: Hex string uncompressed public key.
     """
     ec_point = BIP32Key.fromExtendedKey(xpub).K.pubkey.point
