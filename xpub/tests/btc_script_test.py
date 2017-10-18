@@ -19,8 +19,8 @@ class TestBtcScriptFunctions(unittest.TestCase):
             op_n(17)
 
     def test_push_n(self):
-        self.assertListEqual(list(map(push_n, [1, 5, 10, 16, 75])),
-                             [b'\x01', b'\x05', b'\x0a', b'\x10', b'\x4b'])
+        self.assertListEqual(list(map(push_n, [1, 5, 10, 16, 20, 75])),
+                             [b'\x01', b'\x05', b'\x0a', b'\x10', b'\x14', b'\x4b'])
 
     def test_push_n_lt(self):
         with self.assertRaises(AssertionError):
