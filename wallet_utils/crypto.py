@@ -40,50 +40,53 @@ def _prefix_bytes(addr_type, testnet=False):
 
 def xpub_to_child_xpub(xpub, idx):
     """
-    Get the child wallet_utils for a given wallet_utils and index. E.g. if `xp` is the wallet_utils for m/44'/0'/0', then
-    `xpub_to_child_xpub(xp, i)` will give the wallet_utils corresponding to m/44'/0'/0'/i.
-    :param xpub: Base58 encoded wallet_utils.
+    Get the child xpub for a given xpub and index. E.g. if `xp` is the xpub for m/44'/0'/0', then
+    `xpub_to_child_xpub(xp, i)` will give the xpub corresponding to m/44'/0'/0'/i.
+    :param xpub: Base58 encoded xpub.
     :param idx: Integer, non-hardened index (idx < 2**31).
-    :return: Base58 encoded wallet_utils.
+    :return: Base58 encoded xpub.
     """
     assert 0 <= idx < MAX_IDX, \
         "Indexes must be >= 0 and < 2^31 (indexes >= 2^31 must be derived as hardened, which is not possible with an " \
-        "wallet_utils). "
+        "xpub). "
     return BIP32Key.fromExtendedKey(xpub).CKDpub(idx).ExtendedKey(private=False)
 
 
 def xpub_at_path(root_node, *path):
     """
-    Follow a (non-hardened) hierarchy from a root node. E.g. if `rn` is the wallet_utils for account #1 (m/44'/0'/1'), the first
+    Follow a (non-hardened) hierarchy from a root node. E.g. if `rn` is the xpub for account #1 (m/44'/0'/1'), the first
     receiving address (m/44'/0'/1'/0/1) and change address (m/44'/0'/1'/1/1) are `xpub_at_path(rn, 0, 1)` and
     `xpub_at_path(rn, 1, 1)`, respectively.
-    :param root_node: Base58 encoded wallet_utils.
+    :param root_node: Base58 encoded xpub.
     :param path: The path to append to the current node as an integer list, e.g. to append the path /0/1/2 use 0, 1, 2.
-    :return: Base58 encoded wallet_utils.
+    :return: Base58 encoded xpub.
     """
     return reduce(xpub_to_child_xpub, path, root_node)
 
 
 def xpub_to_pk(xpub):
     """
-    Derive a compressed public key from an wallet_utils.
-    :param xpub: Base58 encoded wallet_utils.
+    Derive a compressed public key from an xpub.
+    :param xpub: Base58 encoded xpub.
     :return: Hex string compressed public key.
     """
-    # Last 33 bytes of wallet_utils are the compressed public key
+    # Last 33 bytes of xpub are the compressed public key
     raw = Base58.check_decode(xpub)
     return raw[-33:].hex()
 
 
 def xpub_to_uncompressed_pk(xpub):
     """
-    Derive an uncompressed public key from an wallet_utils. Let the excellent bip32utils library create the point from the wallet_utils.
-    :param xpub: Base58 encoded wallet_utils.
+    Derive an uncompressed public key from an xpub. Let the excellent bip32utils library create the point from the xpub.
+    :param xpub: Base58 encoded xpub.
     :return: Hex string uncompressed public key.
     """
     ec_point = BIP32Key.fromExtendedKey(xpub).K.pubkey.point
 
-    def hx(i): return hex(i)[2:]
+    def hx(i):
+        without_prefix = hex(i)[2:]
+        padding = 64 - len(without_prefix)  # values should be 32 bytes (64 hex chars)
+        return (padding * "0") + without_prefix
 
     return '04' + hx(ec_point.x()) + hx(ec_point.y())
 
@@ -94,8 +97,7 @@ def pk_to_p2pkh_addr(pk, testnet=False):
     """
     pk_bytes = bytes.fromhex(pk)
     assert is_compressed_pk(pk_bytes), "Only use compressed public keys please."
-    prefix = _prefix_bytes('p2pkh', testnet=testnet)
-    return Base58.check_encode(prefix + hash160_bytes(pk_bytes))
+    return Base58.check_encode(_prefix_bytes('p2pkh', testnet=testnet) + hash160_bytes(pk_bytes))
 
 
 def pk_to_ethereum_addr(uncompressed_pk):
@@ -120,30 +122,34 @@ def pk_to_p2wpkh_in_p2sh_addr(pk, testnet=False):
     assert is_compressed_pk(pk_bytes), \
         "Only compressed public keys are compatible with p2sh-p2wpkh addresses. See BIP49."
 
-    # Script sig is just PUSH(20){hash160(cpk)}
-    push_20 = bytes.fromhex("0014")
-    script_sig = push_20 + hash160_bytes(pk_bytes)
+    # Script sig is just 0 + PUSH(20){hash160(cpk)}
+    script_sig = OP_0 + push_bytes(hash160_bytes(pk_bytes))
 
     # Address is then prefix + hash160(script_sig)
-    prefix = _prefix_bytes('p2sh', testnet=testnet)
-    address = Base58.check_encode(prefix + hash160_bytes(script_sig))
+    address = Base58.check_encode(_prefix_bytes('p2sh', testnet=testnet) + hash160_bytes(script_sig))
     return address
 
 
-def pks_to_p2sh_multisig_addr(m, *pks):
+def pks_to_p2sh_multisig_addr(m, *pks, testnet=False):
     """
     :param m: The 'm' in m-of-n; the number of required signatures.
     :param pks: The public keys involved in the multisig. `len(pks) == n` in m-of-n.
     :return: A base 58 encoded address. (The p2sh address prefix + the hash of the redeem script.)
     """
+    redeem_script = _p2sh_multisig_script(m, *pks)
+    assert len(redeem_script) <= 500, "Spending script is at most 500 bytes (it is valid /and/ standard)"
+    return Base58.check_encode(_prefix_bytes("p2sh", testnet=testnet) + hash160_bytes(redeem_script))
+
+
+def _p2sh_multisig_script(m, *pks):
     assert len(pks) <= 20, "keys passed to OP_CHECKMULTISIG <= 20"
+    # Sort the pks and put together the opcodes to push each pk to the stack
     pks = sorted(pks)
     push_pks = reduce(lambda a, b: a + push_bytes(b), map(bytes.fromhex, pks), b'')
     n = op_n(len(pks))  # The 'n' part of m-of-n
+
     # Format is <OP_{M required}> <A pubkey> ... <N pubkey> <OP_{N keys}> <OP_CHECKMULTISIG>
-    redeem_script = op_n(m) + push_pks + n + OP_CHECKMULTISIG
-    assert len(redeem_script) <= 500, "Spending script is at most 500 bytes (it is valid /and/ standard)"
-    return Base58.check_encode(_prefix_bytes("p2sh") + hash160_bytes(redeem_script))
+    return op_n(m) + push_pks + n + OP_CHECKMULTISIG
 
 
 def compress_pk(uncompressed_pk):
@@ -180,4 +186,3 @@ def is_uncompressed_pk(pk_bytes):
     :return True for valid uncompressed format.
     """
     return len(pk_bytes) == 65 and pk_bytes.startswith(b"\x04")
-

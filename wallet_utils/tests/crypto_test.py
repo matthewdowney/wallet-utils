@@ -36,9 +36,6 @@ class TestCryptoMethods(unittest.TestCase):
         self.assertEqual(xpub_to_pk(recv0), "03a1af804ac108a8a51782198c2d034b28bf90c8803f5a53f76276fa69a4eae77f")
 
     def test_xpub_to_uncompressed(self):
-        """
-        wallet_utils is for the compressed public key 03a1af804ac108a8a51782198c2d034b28bf90c8803f5a53f76276fa69a4eae77f.
-        """
         xpub = self.bip49_xpub()
         recv0 = xpub_at_path(xpub, 0, 0)  # first receive address
         unc_pk = "04a1af804ac108a8a51782198c2d034b28bf90c8803f5a53f76276fa69a4eae77f3010ba699877871e188285d8c36e320eb08311d8aecf27ff8971bc7fde240bfd"
