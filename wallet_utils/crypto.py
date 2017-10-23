@@ -161,7 +161,7 @@ def compress_pk(uncompressed_pk):
     assert is_uncompressed_pk(pk_bytes), "Provided key is uncompressed."
     pk_bytes = pk_bytes[1:]  # Remove the x04 prefix
     x, y = pk_bytes[:32], pk_bytes[32:]  # Split out the x, y ec points
-    parity_flag = (b'\x03' if int(y.hex(), 16) & 1 else b'\x02')
+    parity_flag = (b'\x03' if y[-1] & 1 else b'\x02')
     return (parity_flag + x).hex()
 
 
