@@ -49,6 +49,9 @@ def xpub_to_child_xpub(xpub, idx):
     assert 0 <= idx < MAX_IDX, \
         "Indexes must be >= 0 and < 2^31 (indexes >= 2^31 must be derived as hardened, which is not possible with an " \
         "xpub). "
+    # TODO: This can return None if the left 32 bytes >= curve order or if point = Infinity (chances 1/2^127, but should be handled)
+    # TODO: Replace object creation with faster implemenation
+    # TODO: Try to simplify `ys = (x**3+7) % FIELD_ORDER` to pow(x, 3, FIELD_ORDER) + (7 % FIELD_ORDER) & check performance
     return BIP32Key.fromExtendedKey(xpub).CKDpub(idx).ExtendedKey(private=False)
 
 
@@ -75,6 +78,7 @@ def xpub_to_pk(xpub):
     return raw[-33:].hex()
 
 
+# TODO: Get rid of this method, and just add an uncompress_pk method
 def xpub_to_uncompressed_pk(xpub):
     """
     Derive an uncompressed public key from an xpub. Let the excellent bip32utils library create the point from the xpub.
