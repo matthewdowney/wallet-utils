@@ -1,5 +1,6 @@
 import itertools
 import unittest
+import random
 
 from wallet_utils.crypto import *
 
@@ -17,10 +18,12 @@ class LongRunningTests(unittest.TestCase):
         """
         xpub = "xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeNK1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw"
 
-        # Pick num indexes from the beginning, middle, and end of the possible range
+        # Pick num indexes from the beginning, middle, and end of the possible range, then add an extra num random
+        # indexes. Total indexes tested will be num*4
         num = 500
-        print("Generating {} xpubs distributed across the range {} to {}".format(num * 3, 0, 2 ** 31))
-        idxs = itertools.chain(range(0, num), range(2 ** 30, (2 ** 30) + num), range((2 ** 31) - num, 2 ** 31))
+        print("Generating {} xpubs distributed across the range {} to {}".format(num * 4, 0, 2 ** 31))
+        idxs = itertools.chain(range(0, num), range(2 ** 30, (2 ** 30) + num), range((2 ** 31) - num, 2 ** 31),
+                               (random.randrange(0, 2**31) for _ in range(num)))
 
         progress = 0
         for idx in idxs:
@@ -30,7 +33,7 @@ class LongRunningTests(unittest.TestCase):
 
             progress += 1
             if progress % 15 == 0:
-                print("{}% done...".format(round((float(progress) * 100) / (num * 3), 0)))
+                print("{}% done...".format(round((float(progress) * 100) / (num * 4), 0)))
 
 
 if __name__ == '__main__':
