@@ -115,7 +115,7 @@ def pk_to_ethereum_addr(uncompressed_pk):
     pk_bytes = pk_bytes[1:]  # Strip the initial 0x04 byte
     kc = keccak_256()
     kc.update(pk_bytes)
-    return kc.digest()[-20:].hex()
+    return "0x" + kc.digest()[-20:].hex()
 
 
 def pk_to_p2wpkh_in_p2sh_addr(pk, testnet=False):
