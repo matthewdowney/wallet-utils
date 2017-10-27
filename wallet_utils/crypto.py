@@ -1,6 +1,7 @@
 import hashlib
 from functools import reduce
 from hashlib import sha256
+
 from wallet_utils.btc_script import *
 
 try:
@@ -33,9 +34,30 @@ ADDR_PREFIX_BYTES = {
     'p2sh_test': b"\xc4"
 }
 
+# xpub serialization format: The indexes for each xpub field in a byte array.
+XPUB_FORMAT = {
+    'version':      (0,  4),
+    'depth':        (4,  5),
+    'fingerprint':  (5,  9),
+    'child_number': (9,  13),
+    'chain_code':   (13, 45),
+    'key':          (45, 78)
+}
+
 
 def _prefix_bytes(addr_type, testnet=False):
     return ADDR_PREFIX_BYTES[addr_type + ('_test' if testnet else '')]
+
+
+def xpub_bytes_to_field_bytes(xpub_bytes, field_name):
+    """
+    From an XPUB that's been Base58 decoded into bytes, get the bytes for a particular field.
+    :param xpub_bytes: Byte encoded xpub.
+    :param field_name: One of version, depth, fingerprint, child_number, chain_code, key.
+    :return: The bytes for the requested field.
+    """
+    start, end = XPUB_FORMAT[field_name]
+    return xpub_bytes[start:end]
 
 
 def xpub_to_child_xpub(xpub, idx):
@@ -74,8 +96,7 @@ def xpub_to_pk(xpub):
     :return: Hex string compressed public key.
     """
     # Last 33 bytes of xpub are the compressed public key
-    raw = Base58.check_decode(xpub)
-    return raw[-33:].hex()
+    return xpub_bytes_to_field_bytes(Base58.check_decode(xpub), 'key').hex()
 
 
 # TODO: Get rid of this method, and just add an uncompress_pk method

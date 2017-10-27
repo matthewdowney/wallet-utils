@@ -1,5 +1,7 @@
 import unittest
 
+from ecdsa.ecdsa import string_to_int
+
 from wallet_utils.crypto import *
 
 
@@ -7,6 +9,20 @@ class TestCryptoMethods(unittest.TestCase):
     """
     Wherever possible, test vectors from BIPs are used.
     """
+
+    def test_xpub_bytes_to_field_bytes(self):
+        root = "xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeNK1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw"
+        child1 = "xpub6ASuArnXKPbfEwhqN6e3mwBcDTgzisQN1wXN9BJcM47sSikHjJf3UFHKkNAWbWMiGj7Wf5uMash7SyYq527Hqck2AxYysAA7xmALppuCkwQ"
+        root_b, child1_b = map(Base58.check_decode, [root, child1])
+
+        as_int = lambda x, f: string_to_int(xpub_bytes_to_field_bytes(x, f))
+
+        # Check the depth
+        self.assertEqual(as_int(root_b, 'depth'), 1)
+        self.assertEqual(as_int(child1_b, 'depth'), 2)
+
+        # Check the child number
+        self.assertEqual(as_int(child1_b, 'child_number'), 1)
 
     def test_xpub_to_child_xpub(self):
         """
